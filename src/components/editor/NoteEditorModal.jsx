@@ -1,0 +1,814 @@
+import DoodleCanvas from "../DoodleCanvas";
+import { Pencil } from "lucide-react";
+import { useState, useRef } from "react";
+import { useNotes } from "../../context/useNotes";
+import RichEditor from "./RichEditor";
+import ImageLightbox from "../modals/ImageLightbox";
+import { formatFileSize, getReminderCountdown, isReminderDue } from "../../utils/dates";
+import {
+  X,
+  Star,
+  Pin,
+  Trash2,
+  Copy,
+  Archive,
+  Download,
+  Folder,
+  Tag,
+  CheckSquare,
+  Paperclip,
+  Bell,
+  Clock,
+  Plus,
+  RotateCcw,
+  Check,
+  FileText,
+  RotateCw,
+  ArrowLeft,
+  ExternalLink,
+  Eye,
+  FileCheck2,
+} from "lucide-react";
+
+const NOTE_COLORS = [
+  { id: "violet", name: "Violet", bg: "#8b5cf6" },
+  { id: "blue", name: "Blue", bg: "#3b82f6" },
+  { id: "emerald", name: "Emerald", bg: "#10b981" },
+  { id: "amber", name: "Amber", bg: "#f59e0b" },
+  { id: "rose", name: "Rose", bg: "#f43f5e" },
+  { id: "cyan", name: "Cyan", bg: "#06b6d4" },
+];
+
+export default function NoteEditorModal({ inline = false }) {
+  const {
+   selectedNote,
+    setSelectedId,
+    createNote,
+    updateNote,
+    deleteNote,
+    restoreNote,
+    duplicateNote,
+    togglePin,
+    toggleFavorite,
+    toggleArchive,
+    folders,
+    addTask,
+    toggleTask,
+    deleteTask,
+    addAttachment,
+    removeAttachment,
+    setNoteReminder,
+    clearNoteReminder,
+    snoozeNoteReminder,
+    exportNoteMarkdown,
+    saveStatus,
+    openPdfViewer,
+  } = useNotes();
+
+  // Active sub-tab in editor modal: 'editor' | 'tasks' | 'attachments' | 'reminder'
+  const [activeTab, setActiveTab] = useState("editor");
+  const [newTaskInput, setNewTaskInput] = useState("");
+  const [taskPriority, setTaskPriority] = useState("medium");
+  const [newTagInput, setNewTagInput] = useState("");
+  const [previewAttachment, setPreviewAttachment] = useState(null);
+
+  // Reminder form state
+  const [reminderDate, setReminderDate] = useState(
+    selectedNote?.reminder?.date || new Date().toISOString().split("T")[0]
+  );
+  const [reminderTime, setReminderTime] = useState(
+    selectedNote?.reminder?.time || "10:00"
+  );
+
+  const fileInputRef = useRef(null);
+
+  if (!selectedNote) {
+    if (!inline) return null;
+
+    return (
+      <section className="editor-empty-state" aria-label="Note editor">
+        <div className="editor-empty-content">
+          <div className="editor-empty-icon">
+            <FileText size={25} />
+          </div>
+          <span className="editor-empty-eyebrow">YOUR EDITOR</span>
+          <h2>Select a note to begin</h2>
+          <p>
+            Choose a note from your library, or start with a fresh page.
+          </p>
+          <button
+            type="button"
+            className="primary-btn editor-empty-create-btn"
+            onClick={() => createNote()}
+          >
+            <Plus size={16} />
+            Create a note
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  // Handle file uploads (Images & Documents)
+  function handleFileUpload(e) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    files.forEach((file) => {
+      // Limit file size to 10MB to maintain clean memory performance
+      if (file.size > 10 * 1024 * 1024) {
+        alert("File size exceeds 10MB limit.");
+        return;
+      }
+
+      const fileName = file.name || "";
+      const ext = fileName.split(".").pop().toLowerCase();
+      const isPdf = ext === "pdf" || (file.type && file.type.toLowerCase().includes("pdf"));
+      const isDoc =
+        ["doc", "docx", "rtf", "odt", "pages", "txt", "md", "csv", "tsv"].includes(ext) ||
+        (file.type && (
+          file.type.toLowerCase().includes("word") ||
+          file.type.toLowerCase().includes("document") ||
+          file.type.toLowerCase().includes("officedocument") ||
+          file.type.toLowerCase().includes("msword")
+        ));
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result;
+        const attachmentObj = {
+          id: `att-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          name: file.name,
+          size: file.size,
+          type: file.type || "application/octet-stream",
+          isPdf: !!isPdf,
+          isDoc: !!isDoc,
+          dataUrl,
+          uploadedAt: Date.now(),
+        };
+        addAttachment(selectedNote.id, attachmentObj);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = "";
+  }
+
+  // Handle task addition
+  function handleAddTaskSubmit(e) {
+    e.preventDefault();
+    if (!newTaskInput.trim()) return;
+    addTask(selectedNote.id, newTaskInput.trim(), taskPriority);
+    setNewTaskInput("");
+  }
+
+  // Handle tag addition
+  function handleAddTag(tagText) {
+    const clean = tagText.trim().toLowerCase().replace(/^#+/, "");
+    if (!clean) return;
+    const currentTags = selectedNote.tags || [];
+    if (!currentTags.some((t) => t.toLowerCase() === clean)) {
+      updateNote(selectedNote.id, { tags: [...currentTags, clean] });
+    }
+    setNewTagInput("");
+  }
+
+  // Handle reminder save
+  function handleSaveReminder(e) {
+    e.preventDefault();
+    if (!reminderDate) return;
+    setNoteReminder(selectedNote.id, {
+      date: reminderDate,
+      time: reminderTime || "09:00",
+    });
+  }
+
+  // Completed tasks count
+  const tasks = selectedNote.tasks || [];
+  const completedTasks = tasks.filter((t) => t.completed).length;
+  const taskProgress = tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0;
+
+  // Reminder countdown info
+  const reminderCountdown = getReminderCountdown(selectedNote.reminder);
+  const reminderIsOverdue = isReminderDue(selectedNote.reminder);
+
+  return (
+    <>
+      <div
+  className={inline ? "workspace-editor-host" : "modal-backdrop editor-backdrop"}
+  onMouseDown={(e) => {
+    if (!inline && e.target === e.currentTarget) {
+      setSelectedId(null);
+    }
+  }}
+>
+        <section
+  className={`editor-modal ${
+    inline ? "editor-inline-panel" : ""
+  } modal-color-${selectedNote.color || "violet"}`}
+    role={inline ? "region" : "dialog"}
+    aria-modal={inline ? undefined : true}
+  aria-label="Note editor"
+>
+          {/* Header Bar */}
+          <header className="note-editor-header">
+            <div className="editor-header-left">
+              <span className="editor-status-pill">
+                {saveStatus === "saving" ? (
+                  <>
+                    <RotateCw size={12} className="spin" /> Saving...
+                  </>
+                ) : saveStatus === "unsaved" ? (
+                  <>
+                    <span className="unsaved-dot" /> Unsaved changes
+                  </>
+                ) : (
+                  <>
+                    <Check size={12} /> Saved
+                  </>
+                )}
+              </span>
+
+              {selectedNote.archived && (
+                <span className="editor-badge badge-archived">Archived</span>
+              )}
+              {selectedNote.deleted && (
+                <span className="editor-badge badge-deleted">In Trash</span>
+              )}
+            </div>
+
+            <div className="editor-header-actions">
+              <button
+                type="button"
+                className={`mini-icon ${selectedNote.pinned ? "is-active" : ""}`}
+                title={selectedNote.pinned ? "Unpin note" : "Pin note"}
+                aria-label="Toggle pin"
+                onClick={() => togglePin(selectedNote.id)}
+              >
+                <Pin size={17} />
+              </button>
+
+              <button
+                type="button"
+                className={`mini-icon ${selectedNote.favorite ? "is-favorite" : ""}`}
+                title={selectedNote.favorite ? "Remove favorite" : "Mark favorite"}
+                aria-label="Toggle favorite"
+                onClick={() => toggleFavorite(selectedNote.id)}
+              >
+                <Star size={17} />
+              </button>
+
+              <button
+                type="button"
+                className="icon-btn close-editor-btn"
+                onClick={() => setSelectedId(null)}
+                aria-label={inline ? "Back to notes" : "Close editor"}
+              >
+                {inline && <ArrowLeft className="inline-editor-back-icon" size={18} />}
+                {inline && <span className="inline-editor-back-label">Notes</span>}
+                <X size={19} />
+              </button>
+            </div>
+          </header>
+
+          {/* Note Metadata Bar (Folder, Color, Tags, Title) */}
+          <div className="editor-metadata-bar">
+            {/* Title Input */}
+            <input
+              className="editor-title-input"
+              value={selectedNote.title || ""}
+              onChange={(e) => updateNote(selectedNote.id, { title: e.target.value })}
+              placeholder="Note title..."
+              autoFocus
+            />
+
+            {/* Folder & Color Selectors */}
+            <div className="meta-selectors-row">
+              <div className="folder-selector">
+                <Folder size={15} />
+                <select
+                  value={selectedNote.folderId || folders[0]?.id || ""}
+                  onChange={(e) => {
+                    const folder = folders.find((f) => f.id === e.target.value);
+                    if (folder) {
+                      updateNote(selectedNote.id, {
+                        folderId: folder.id,
+                        category: folder.name,
+                      });
+                    }
+                  }}
+                  aria-label="Select folder"
+                >
+                  {folders.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Note Theme Color Selector */}
+              <div className="color-chips-row">
+                {NOTE_COLORS.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`note-color-dot ${selectedNote.color === c.id ? "is-selected" : ""}`}
+                    style={{ backgroundColor: c.bg }}
+                    onClick={() => updateNote(selectedNote.id, { color: c.id })}
+                    title={`Theme: ${c.name}`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Tags Pills & Input */}
+            <div className="editor-tags-row">
+              <Tag size={14} className="tag-row-icon" />
+              <div className="editor-tags-list">
+                {(selectedNote.tags || []).map((tag) => (
+                  <span className="editor-tag-pill" key={tag}>
+                    #{tag}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateNote(selectedNote.id, {
+                          tags: (selectedNote.tags || []).filter((t) => t !== tag),
+                        })
+                      }
+                      title={`Remove tag ${tag}`}
+                      aria-label={`Remove tag ${tag}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+
+              <input
+                type="text"
+                className="editor-tag-input"
+                placeholder="+ Add tag (Enter)"
+                value={newTagInput}
+                onChange={(e) => setNewTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddTag(newTagInput);
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Sub Navigation Tabs */}
+          <div className="editor-tabs-bar">
+            <button
+              type="button"
+              className={`editor-tab-nav ${activeTab === "editor" ? "is-active" : ""}`}
+              onClick={() => setActiveTab("editor")}
+            >
+              <FileText size={15} />
+              <span>Note Body</span>
+            </button>
+
+            <button
+              type="button"
+              className={`editor-tab-nav ${activeTab === "tasks" ? "is-active" : ""}`}
+              onClick={() => setActiveTab("tasks")}
+            >
+              <CheckSquare size={15} />
+              <span>To-Do List</span>
+              {tasks.length > 0 && (
+                <span className="tab-counter">
+                  {completedTasks}/{tasks.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              className={`editor-tab-nav ${activeTab === "reminder" ? "is-active" : ""}`}
+              onClick={() => setActiveTab("reminder")}
+            >
+              <Bell size={15} />
+              <span>Reminder</span>
+              {selectedNote.reminder && (
+                <span className={`tab-indicator-dot ${reminderIsOverdue ? "dot-overdue" : "dot-upcoming"}`} />
+              )}
+            </button>
+
+            <button
+              type="button"
+              className={`editor-tab-nav ${activeTab === "attachments" ? "is-active" : ""}`}
+              onClick={() => setActiveTab("attachments")}
+            >
+              <Paperclip size={15} />
+              <span>Attachments</span>
+              {(selectedNote.attachments || []).length > 0 && (
+                <span className="tab-counter">
+                  {selectedNote.attachments.length}
+                </span>
+              )}
+            </button>
+            <button
+  type="button"
+  className={`editor-tab-nav ${
+    activeTab === "doodle" ? "is-active" : ""
+  }`}
+  onClick={() => setActiveTab("doodle")}
+>
+  <Pencil size={15} />
+  <span>Doodle</span>
+</button>
+          </div>
+
+
+          {/* Tab Content Area */}
+<div className="editor-content-scroll">
+
+  {/* 1. Rich Text Content */}
+  {activeTab === "editor" && (
+    <div className="tab-pane pane-editor">
+      <RichEditor
+        key={selectedNote.id}
+        content={selectedNote.content || ""}
+        value={selectedNote.content || ""}
+        onChange={(content) =>
+          updateNote(selectedNote.id, { content })
+        }
+      />
+    </div>
+  )}
+
+  {/* Doodle Tab */}
+  {activeTab === "doodle" && (
+    <div className="tab-pane pane-doodle">
+      <h3>Draw inside this note</h3>
+      <p>Sketch ideas, diagrams, or quick reminders.</p>
+
+      <DoodleCanvas
+        key={selectedNote.id}
+        initialData={selectedNote.doodle || ""}
+        saveLabel="Save to this note"
+        onSave={(imageData) =>
+          updateNote(selectedNote.id, { doodle: imageData })
+        }
+      />
+    </div>
+  )}
+
+            {/* 2. Tasks / Checklist Tab */}
+            {activeTab === "tasks" && (
+              <div className="tab-pane pane-tasks">
+                <div className="tasks-progress-header">
+                  <div className="progress-info">
+                    <span>
+                      <strong>{completedTasks}</strong> of <strong>{tasks.length}</strong> tasks completed
+                    </span>
+                    <span>{taskProgress}%</span>
+                  </div>
+                  <div className="progress-bar-track">
+                    <div
+                      className="progress-bar-fill"
+                      style={{ width: `${taskProgress}%` }}
+                    />
+                  </div>
+                </div>
+
+                <form onSubmit={handleAddTaskSubmit} className="add-task-form">
+                  <input
+                    type="text"
+                    placeholder="Add a new checklist task..."
+                    value={newTaskInput}
+                    onChange={(e) => setNewTaskInput(e.target.value)}
+                    autoFocus
+                  />
+                  <select
+                    value={taskPriority}
+                    onChange={(e) => setTaskPriority(e.target.value)}
+                    aria-label="Task priority"
+                  >
+                    <option value="low">Low Priority</option>
+                    <option value="medium">Medium Priority</option>
+                    <option value="high">High Priority</option>
+                  </select>
+                  <button type="submit" className="primary-btn add-task-btn">
+                    <Plus size={16} /> Add Task
+                  </button>
+                </form>
+
+                <div className="tasks-list">
+                  {tasks.length === 0 ? (
+                    <div className="empty-sub-state">
+                      <CheckSquare size={28} />
+                      <p>No tasks yet. Create your first checklist item above!</p>
+                    </div>
+                  ) : (
+                    tasks.map((task) => (
+                      <div
+                        key={task.id}
+                        className={`task-row-item ${task.completed ? "is-completed" : ""}`}
+                      >
+                        <label className="task-checkbox-label">
+                          <input
+                            type="checkbox"
+                            checked={!!task.completed}
+                            onChange={() => toggleTask(selectedNote.id, task.id)}
+                          />
+                          <span className="task-text">{task.text}</span>
+                        </label>
+
+                        <div className="task-right-meta">
+                          <span className={`priority-tag priority-${task.priority || "medium"}`}>
+                            {task.priority || "medium"}
+                          </span>
+                          <button
+                            type="button"
+                            className="task-delete-btn"
+                            onClick={() => deleteTask(selectedNote.id, task.id)}
+                            title="Delete task"
+                            aria-label="Delete task"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 3. Reminders Tab */}
+            {activeTab === "reminder" && (
+              <div className="tab-pane pane-reminder">
+                {selectedNote.reminder && selectedNote.reminder.active ? (
+                  <div className="active-reminder-card">
+                    <div className="active-reminder-info">
+                      <div className="reminder-bell-icon">
+                        <Bell size={24} />
+                      </div>
+                      <div>
+                        <h4>Scheduled Reminder</h4>
+                        <p>
+                          Set for <strong>{selectedNote.reminder.date}</strong> at{" "}
+                          <strong>{selectedNote.reminder.time || "09:00"}</strong>
+                        </p>
+                        <span className={`reminder-countdown-badge ${reminderIsOverdue ? "badge-overdue" : ""}`}>
+                          {reminderIsOverdue ? "Overdue Alert" : reminderCountdown?.text}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="reminder-actions-cluster">
+                      <button
+                        type="button"
+                        className="secondary-btn"
+                        onClick={() => snoozeNoteReminder(selectedNote.id, 15)}
+                      >
+                        <RotateCcw size={14} /> Snooze 15m
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-btn"
+                        onClick={() => snoozeNoteReminder(selectedNote.id, 60)}
+                      >
+                        <RotateCcw size={14} /> Snooze 1h
+                      </button>
+                      <button
+                        type="button"
+                        className="danger-outline-btn"
+                        onClick={() => clearNoteReminder(selectedNote.id)}
+                      >
+                        <X size={14} /> Remove Reminder
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSaveReminder} className="set-reminder-form">
+                    <div className="form-intro">
+                      <Clock size={20} />
+                      <div>
+                        <h4>Set a Due Date &amp; Time Reminder</h4>
+                        <p>Receive notifications and an audio chime when this note needs your attention.</p>
+                      </div>
+                    </div>
+
+                    <div className="date-time-inputs-row">
+                      <div className="form-group">
+                        <label htmlFor="reminder-date">Date</label>
+                        <input
+                          id="reminder-date"
+                          type="date"
+                          value={reminderDate}
+                          onChange={(e) => setReminderDate(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="reminder-time">Time</label>
+                        <input
+                          id="reminder-time"
+                          type="time"
+                          value={reminderTime}
+                          onChange={(e) => setReminderTime(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <button type="submit" className="primary-btn save-reminder-btn">
+                      <Bell size={16} /> Save Reminder
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
+
+            {/* 4. Attachments Tab */}
+            {activeTab === "attachments" && (
+              <div className="tab-pane pane-attachments">
+                <div className="upload-dropzone" onClick={() => fileInputRef.current?.click()}>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    style={{ display: "none" }}
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx,.txt,.md,.rtf,.odt,.pages,.csv,.tsv,.json"
+                    onChange={handleFileUpload}
+                  />
+                  <div className="dropzone-icon">
+                    <Paperclip size={28} />
+                  </div>
+                  <h4>Click to upload attachments &amp; documents</h4>
+                  <p>Supports PDF, Word (DOCX/DOC), Markdown, TXT, CSV, images (up to 10MB)</p>
+                </div>
+
+                <div className="attachments-grid">
+                  {(selectedNote.attachments || []).map((att) => {
+                    const isImg = att.type?.startsWith("image/");
+                    const ext = (att.name || "").split(".").pop().toLowerCase();
+                    const isPdfAtt = att.isPdf || ext === "pdf" || att.type?.includes("pdf");
+                    const isDocAtt =
+                      att.isDoc ||
+                      ["doc", "docx", "rtf", "odt", "pages", "txt", "md"].includes(ext) ||
+                      att.type?.includes("word") ||
+                      att.type?.includes("document");
+
+                    return (
+                      <div key={att.id} className="attachment-card">
+                        {isImg ? (
+                          <div
+                            className="attachment-thumb-wrap"
+                            onClick={() => setPreviewAttachment(att)}
+                          >
+                            <img src={att.dataUrl} alt={att.name} className="attachment-thumb" />
+                            <div className="thumb-hover-overlay">
+                              <ExternalLink size={18} />
+                            </div>
+                          </div>
+                        ) : isPdfAtt ? (
+                          <div
+                            className="attachment-doc-wrap attachment-pdf-wrap"
+                            onClick={() => {
+                              if (att.dataUrl) {
+                                openPdfViewer(att.dataUrl, selectedNote.title, att.name);
+                              }
+                            }}
+                            title="Click to view PDF reader"
+                            style={{ cursor: "pointer" }}
+                          >
+                            <FileCheck2 size={32} color="#f43f5e" />
+                          </div>
+                        ) : (
+                          <div className="attachment-doc-wrap">
+                            <FileText size={32} color={isDocAtt ? "#3b82f6" : "currentColor"} />
+                          </div>
+                        )}
+
+                        <div className="attachment-details">
+                          <strong className="attachment-name" title={att.name}>
+                            {att.name}
+                          </strong>
+                          <span className="attachment-size">{formatFileSize(att.size)}</span>
+                        </div>
+
+                        <div className="attachment-card-actions">
+                          {isPdfAtt && att.dataUrl && (
+                            <button
+                              type="button"
+                              className="icon-btn preview-att-btn"
+                              onClick={() => openPdfViewer(att.dataUrl, selectedNote.title, att.name)}
+                              title="Preview PDF"
+                              aria-label="Preview PDF"
+                            >
+                              <Eye size={14} />
+                            </button>
+                          )}
+                          <a
+                            href={att.dataUrl}
+                            download={att.name}
+                            className="icon-btn download-att-btn"
+                            title="Download attachment"
+                          >
+                            <Download size={14} />
+                          </a>
+                          <button
+                            type="button"
+                            className="icon-btn remove-att-btn"
+                            onClick={() => removeAttachment(selectedNote.id, att.id)}
+                            title="Delete attachment"
+                            aria-label="Delete attachment"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer Bar */}
+          <footer className="note-editor-footer">
+            <div className="footer-left-actions">
+              {selectedNote.deleted ? (
+                <>
+                  <button
+                    type="button"
+                    className="primary-btn restore-btn"
+                    onClick={() => restoreNote(selectedNote.id)}
+                  >
+                    Restore from Trash
+                  </button>
+                  <button
+                    type="button"
+                    className="danger-btn"
+                    onClick={() => deleteNote(selectedNote.id)}
+                  >
+                    <Trash2 size={15} /> Delete permanently
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="delete-btn"
+                    onClick={() => deleteNote(selectedNote.id)}
+                  >
+                    <Trash2 size={15} /> Move to Trash
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={() => toggleArchive(selectedNote.id)}
+                  >
+                    <Archive size={15} /> {selectedNote.archived ? "Unarchive" : "Archive"}
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div className="footer-right-actions">
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => duplicateNote(selectedNote.id)}
+                title="Duplicate note"
+              >
+                <Copy size={15} /> Duplicate
+              </button>
+
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => exportNoteMarkdown(selectedNote.id)}
+                title="Export as Markdown"
+              >
+                <Download size={15} /> Export .md
+              </button>
+
+              <button
+                type="button"
+                className="primary-btn done-btn"
+                onClick={() => setSelectedId(null)}
+              >
+                Done
+              </button>
+            </div>
+          </footer>
+        </section>
+      </div>
+
+      {previewAttachment && (
+        <ImageLightbox
+          attachment={previewAttachment}
+          onClose={() => setPreviewAttachment(null)}
+        />
+      )}
+    </>
+  );
+}

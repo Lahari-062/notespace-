@@ -1,0 +1,80 @@
+
+.doodle-panel {
+  width: 100%;
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 14px;
+  background: var(--card-bg, #ffffff);
+  box-sizing: border-box;
+}
+
+.doodle-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.doodle-color,
+.doodle-brush {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.doodle-color input {
+  width: 35px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.doodle-brush input {
+  width: 100px;
+}
+
+.doodle-toolbar button {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #222222;
+  cursor: pointer;
+}
+
+.doodle-toolbar button:hover {
+  background: #f3f4f6;
+}
+
+.doodle-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 9 / 5;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.doodle-saved-message {
+  margin: 10px 0 0;
+  color: #16803c;
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .doodle-panel {
+    padding: 9px;
+  }
+
+  .doodle-toolbar {
+    gap: 8px;
+  }
+}

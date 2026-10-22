@@ -1,0 +1,57 @@
+.doodle-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.doodle-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+}
+
+.doodle-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #222;
+  font-size: 14px;
+}
+
+.doodle-canvas {
+  display: block;
+  width: 100%;
+  max-width: 900px;
+  height: auto;
+  min-height: 300px;
+  background: #ffffff;
+  border: 2px solid #9ca3af;
+  border-radius: 8px;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.doodle-toolbar button {
+  padding: 9px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #111827;
+  cursor: pointer;
+}
+
+.doodle-toolbar button:hover {
+  background: #e5e7eb;
+}
+
+.doodle-saved-message {
+  color: #15803d;
+  font-size: 14px;
+}

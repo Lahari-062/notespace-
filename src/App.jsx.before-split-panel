@@ -1,0 +1,421 @@
+import { useState, useEffect } from "react";
+
+import { AuthProvider } from "./context/AuthContext";
+import { NotesProvider } from "./context/NotesContext";
+import { useAuth } from "./context/useAuth";
+import { useNotes } from "./context/useNotes";
+
+import LoginPage from "./components/auth/LoginPage";
+import LandingPage from "./components/landing/LandingPage";
+import Sidebar from "./components/sidebar/Sidebar";
+import Topbar from "./components/topbar/Topbar";
+import NotesGrid from "./components/notes/NotesGrid";
+import NoteEditorModal from "./components/editor/NoteEditorModal";
+
+import FolderModal from "./components/modals/FolderModal";
+import ProfileModal from "./components/auth/ProfileModal";
+import AuthModal from "./components/auth/AuthModal";
+import BackupModal from "./components/modals/BackupModal";
+import RemindersDrawer from "./components/modals/RemindersDrawer";
+import UploadNotesModal from "./components/modals/UploadNotesModal";
+import PdfViewerModal from "./components/modals/PdfViewerModal";
+
+import ToastContainer from "./components/common/ToastContainer";
+import DoodleCanvas from "./components/DoodleCanvas";
+
+import {
+  FileText,
+  CheckSquare,
+  Bell,
+  Plus,
+  Sparkles,
+  Tag,
+  Upload,
+  FileCheck2,
+} from "lucide-react";
+
+import "./App.css";
+import "./ProfessionalRedesign.css";
+
+function NotesAppContent() {
+  const { currentUser } = useAuth();
+
+  const {
+    activeView,
+    createNote,
+    stats,
+    selectedTag,
+    setSelectedTag,
+    uploadModalOpen,
+    setUploadModalOpen,
+  } = useNotes();
+
+  // Screen navigation
+  const [currentScreen, setCurrentScreen] = useState("landing");
+
+  // Sidebar
+  const [mobileSidebar, setMobileSidebar] = useState(false);
+
+  // Modal states
+  const [folderModalState, setFolderModalState] = useState({
+    isOpen: false,
+    folder: null,
+  });
+
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [backupModalOpen, setBackupModalOpen] = useState(false);
+  const [remindersDrawerOpen, setRemindersDrawerOpen] = useState(false);
+
+  // Theme
+  const [dark, setDark] = useState(() => {
+    try {
+      const stored = localStorage.getItem("notespace_theme_v2");
+
+      if (stored) {
+        return stored === "dark";
+      }
+
+      return (
+        window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches
+      );
+    } catch {
+      return false;
+    }
+  });
+
+  // Apply theme
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "notespace_theme_v2",
+        dark ? "dark" : "light"
+      );
+
+      const meta = document.querySelector(
+        'meta[name="color-scheme"]'
+      );
+
+      if (meta) {
+        meta.content = dark ? "dark" : "light";
+      }
+    } catch (error) {
+      console.error("Theme storage error:", error);
+    }
+  }, [dark]);
+
+  // Keyboard shortcut: Cmd/Ctrl + N
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === "n"
+      ) {
+        event.preventDefault();
+        createNote();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [createNote]);
+
+  // Login screen
+  if (!currentUser) {
+    return (
+      <>
+        <LoginPage
+          dark={dark}
+          onToggleTheme={() =>
+            setDark((previous) => !previous)
+          }
+        />
+
+        <ToastContainer />
+      </>
+    );
+  }
+
+  return (
+    <div className={`app-shell ${dark ? "dark" : ""}`}>
+      {currentScreen === "landing" ? (
+        <LandingPage
+          onEnterWorkspace={() => setCurrentScreen("workspace")}
+          onOpenProfileModal={() => setProfileModalOpen(true)}
+          dark={dark}
+          onToggleTheme={() =>
+            setDark((previous) => !previous)
+          }
+        />
+      ) : (
+        <>
+          {/* Sidebar Navigation */}
+          <Sidebar
+            mobileOpen={mobileSidebar}
+            onCloseMobile={() => setMobileSidebar(false)}
+            onOpenFolderModal={(folder) =>
+              setFolderModalState({
+                isOpen: true,
+                folder,
+              })
+            }
+            onOpenProfileModal={() =>
+              setProfileModalOpen(true)
+            }
+            onOpenAuthModal={() =>
+              setAuthModalOpen(true)
+            }
+            onOpenBackupModal={() =>
+              setBackupModalOpen(true)
+            }
+            onOpenLanding={() =>
+              setCurrentScreen("landing")
+            }
+          />
+
+          {/* Main Workspace */}
+          <main className="app-main-viewport">
+            {/* Topbar */}
+            <Topbar
+              onOpenMobileSidebar={() =>
+                setMobileSidebar(true)
+              }
+              onOpenRemindersDrawer={() =>
+                setRemindersDrawerOpen(true)
+              }
+              onOpenBackupModal={() =>
+                setBackupModalOpen(true)
+              }
+              onOpenProfileModal={() =>
+                setProfileModalOpen(true)
+              }
+              onOpenAuthModal={() =>
+                setAuthModalOpen(true)
+              }
+              onOpenLanding={() =>
+                setCurrentScreen("landing")
+              }
+              dark={dark}
+              onToggleTheme={() =>
+                setDark((previous) => !previous)
+              }
+            />
+
+            {/* Main Content */}
+            <section className="app-content-body">
+              {activeView === "Doodles" ? (
+                /* Separate Doodle Page */
+                <div className="doodles-page">
+                  <div className="doodles-page-header">
+                    <h2>My Doodles</h2>
+                    <p>
+                      Draw your ideas, diagrams, and quick sketches.
+                    </p>
+                  </div>
+
+                  <DoodleCanvas saveLabel="Save Doodle" />
+                </div>
+              ) : (
+                /* Existing Notes Workspace */
+                <>
+                  {/* Workspace Action Buttons */}
+                  <div className="hero-cta-group">
+                    <button
+                      type="button"
+                      className="secondary-btn hero-upload-btn"
+                      onClick={() => setUploadModalOpen(true)}
+                    >
+                      <Upload size={17} />
+                      <span>Upload PDF / Files</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="primary-btn hero-new-note-btn"
+                      onClick={() => createNote()}
+                    >
+                      <Plus size={18} />
+                      <span>New Note</span>
+                    </button>
+                  </div>
+
+                  {/* Statistics Cards */}
+                  <div className="stats-cards-row">
+                    <div className="stat-metric-card stat-accent-violet">
+                      <div className="stat-card-icon">
+                        <FileText size={20} />
+                      </div>
+
+                      <div className="stat-card-content">
+                        <span className="stat-label">
+                          Alphabetical Notes
+                        </span>
+
+                        <strong className="stat-value">
+                          {stats.total}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div
+                      className="stat-metric-card stat-accent-rose"
+                      onClick={() => setUploadModalOpen(true)}
+                    >
+                      <div className="stat-card-icon">
+                        <FileCheck2 size={20} />
+                      </div>
+
+                      <div className="stat-card-content">
+                        <span className="stat-label">
+                          PDF &amp; Documents
+                        </span>
+
+                        <strong className="stat-value">
+                          {stats.pdfNotes || 0}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div className="stat-metric-card stat-accent-emerald">
+                      <div className="stat-card-icon">
+                        <CheckSquare size={20} />
+                      </div>
+
+                      <div className="stat-card-content">
+                        <span className="stat-label">
+                          Tasks Done
+                        </span>
+
+                        <strong className="stat-value">
+                          {stats.tasksCompleted} / {stats.tasksCount}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div
+                      className="stat-metric-card stat-accent-amber"
+                      onClick={() =>
+                        setRemindersDrawerOpen(true)
+                      }
+                    >
+                      <div className="stat-card-icon">
+                        <Bell size={20} />
+                      </div>
+
+                      <div className="stat-card-content">
+                        <span className="stat-label">
+                          Reminders
+                        </span>
+
+                        <strong className="stat-value">
+                          {stats.remindersCount}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Selected Tag Filter */}
+                  {selectedTag && (
+                    <div className="active-tag-filter-banner">
+                      <Tag size={15} />
+
+                      <span>
+                        Filtering by tag:{" "}
+                        <strong>#{selectedTag}</strong>
+                      </span>
+
+                      <button
+                        type="button"
+                        className="clear-tag-filter-btn"
+                        onClick={() => setSelectedTag(null)}
+                      >
+                        Clear Tag Filter
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Existing Notes Grid */}
+                  <NotesGrid />
+
+                  {/* Productivity Tip */}
+                  <div className="bottom-productivity-tip">
+                    <div className="tip-icon-badge">
+                      <Sparkles size={18} />
+                    </div>
+
+                    <div className="tip-text">
+                      <strong>Productivity Tip:</strong>{" "}
+                      Notes are automatically organized in
+                      alphabetical order (A–Z). Use the A–Z
+                      letter pills above to jump between
+                      sections, or drag and drop a supported
+                      document to import it.
+                    </div>
+                  </div>
+                </>
+              )}
+            </section>
+          </main>
+        </>
+      )}
+
+      {/* Global Modals: Accessible from both Landing Page and Workspace */}
+      <NoteEditorModal />
+
+      <UploadNotesModal
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+      />
+
+      <PdfViewerModal />
+
+      <FolderModal
+        isOpen={folderModalState.isOpen}
+        folderToEdit={folderModalState.folder}
+        onClose={() =>
+          setFolderModalState({
+            isOpen: false,
+            folder: null,
+          })
+        }
+      />
+
+      <ProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+      />
+
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+      />
+
+      <BackupModal
+        isOpen={backupModalOpen}
+        onClose={() => setBackupModalOpen(false)}
+      />
+
+      <RemindersDrawer
+        isOpen={remindersDrawerOpen}
+        onClose={() => setRemindersDrawerOpen(false)}
+      />
+
+      {/* Toast Notifications */}
+      <ToastContainer />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <NotesProvider>
+        <NotesAppContent />
+      </NotesProvider>
+    </AuthProvider>
+  );
+}
