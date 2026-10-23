@@ -1,16 +1,64 @@
-# React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# Notespace
 
-Currently, two official plugins are available:
+A professional notes application for organizing notes and documents in one workspace.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- Firebase authentication with email and password
+- Google sign-in and password reset
+- Notes creation and editing
+- Folders, tags, search, and sorting
+- Favorites, pinned notes, archive, and trash
+- Grid and list views
+- Document import and PDF viewing
+- Automatic saving and reminders
+- Responsive interface with light and dark styling
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Technology Stack
 
-## Expanding the ESLint configuration
+- React
+- Vite
+- JavaScript
+- Firebase Authentication
+- CSS
+- Automated tests
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Getting Started
+
+### Prerequisites
+
+- Node.js
+- npm
+
+### Installation
+
+Clone the repository and open the project directory:
+
+```bash
+git clone https://github.com/Lahari-062/notespace-.git
+cd notespace-
+npm install
+```
+
+Create a `.env.local` file using the environment variables required by the project. Refer to the Firebase configuration used by the application. Do not commit credentials or secret values.
+
+### Run the application
+
+```bash
+npm run dev
+```
+
+### Run tests
+
+```bash
+npm test -- --run
+```
+
+## Testing
+
+The project includes automated tests for workspace functionality, UI components, and OTP bridge error handling. Test results should be verified against the current code before release.
+
+## Project Status
+
+The application is undergoing frontend redesign and backend testing. Some authentication and deployment limitations may require further validation before production use.
