@@ -28,6 +28,7 @@ import {
   LogOut,
   Upload,
   FileCheck2,
+  House,
 } from "lucide-react";
 
 const ICON_MAP = {
@@ -58,6 +59,8 @@ export default function Sidebar({
     setSelectedFolderId,
     selectedTag,
     setSelectedTag,
+    setSelectedId,
+    closePdfViewer,
     createNote,
     setUploadModalOpen,
     folders,
@@ -73,6 +76,8 @@ export default function Sidebar({
     setActiveView(view);
     setSelectedFolderId(null);
     setSelectedTag(null);
+    setSelectedId(null);
+    closePdfViewer();
     onCloseMobile?.();
   }
 
@@ -80,19 +85,27 @@ export default function Sidebar({
     setActiveView(folder.name);
     setSelectedFolderId(folder.id);
     setSelectedTag(null);
+    setSelectedId(null);
+    closePdfViewer();
     onCloseMobile?.();
   }
 
   function handleTagClick(tag) {
+    setSelectedId(null);
+    if (activeView === "Welcome") {
+      setActiveView("All Notes");
+    }
     if (selectedTag === tag) {
       setSelectedTag(null);
     } else {
       setSelectedTag(tag);
     }
+    closePdfViewer();
     onCloseMobile?.();
   }
 
   const navItems = [
+    { label: "Home", view: "Welcome", icon: House, count: 0 },
     { label: "All Notes", icon: FileText, count: stats.total },
     { label: "PDF & Docs", icon: FileCheck2, count: stats.pdfNotes || 0 },
     { label: "Favorites", icon: Star, count: stats.favorites },
@@ -138,18 +151,20 @@ export default function Sidebar({
 
         {/* Action Buttons: New Note + Upload Files */}
         <div className="sidebar-actions-stack">
-          <button
-            type="button"
-            className="sidebar-create-btn"
-            onClick={() => {
-              createNote();
-              onCloseMobile?.();
-            }}
-          >
-            <Plus size={18} />
-            <span>New note</span>
-            <kbd>⌘ N</kbd>
-          </button>
+          {(activeView === "Welcome" || activeView === "Doodles") && (
+            <button
+              type="button"
+              className="sidebar-create-btn"
+              onClick={() => {
+                createNote();
+                onCloseMobile?.();
+              }}
+            >
+              <Plus size={18} />
+              <span>New note</span>
+              <kbd>⌘ N</kbd>
+            </button>
+          )}
 
           <button
             type="button"
@@ -171,14 +186,14 @@ export default function Sidebar({
           <div className="sidebar-section">
             <span className="sidebar-section-title">WORKSPACE</span>
             <nav className="sidebar-nav-list">
-              {navItems.map(({ label, icon: NavIcon, count }) => {
-                const isActive = activeView === label && !selectedFolderId;
+              {navItems.map(({ label, view = label, icon: NavIcon, count }) => {
+                const isActive = activeView === view && !selectedFolderId;
                 return (
                   <button
                     key={label}
                     type="button"
                     className={`nav-button ${isActive ? "is-active" : ""}`}
-                    onClick={() => handleNavClick(label)}
+                    onClick={() => handleNavClick(view)}
                   >
                     <NavIcon size={17} className="nav-icon" />
                     <span className="nav-label">{label}</span>

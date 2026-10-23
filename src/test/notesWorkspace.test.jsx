@@ -59,6 +59,20 @@ describe("Notes Workspace & Core Website Functionality", () => {
     expect(cleanTitles).toEqual(sortedClean);
   });
 
+  it("should return to All Notes when creating from a filtered section", () => {
+    const { result } = renderHook(() => useNotes(), { wrapper });
+
+    act(() => result.current.setActiveView("Favorites"));
+
+    act(() => {
+      result.current.createNote({ title: "New workspace note" });
+    });
+
+    expect(result.current.activeView).toBe("All Notes");
+    expect(result.current.selectedNote?.title).toBe("New workspace note");
+    expect(result.current.filteredNotes.some((note) => note.title === "New workspace note")).toBe(true);
+  });
+
   it("should support toggling favorite and updating note content", () => {
     const { result } = renderHook(() => useNotes(), { wrapper });
     const targetNote = result.current.notes[0];

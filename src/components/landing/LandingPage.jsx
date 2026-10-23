@@ -1,553 +1,487 @@
-import { useState, useRef } from "react";
-import { useNotes } from "../../context/useNotes";
-import { useAuth } from "../../context/useAuth";
-import NoteCard from "../notes/NoteCard";
+import { useEffect, useRef, useState } from "react";
 import {
-  Plus,
-  Upload,
-  FileText,
-  FileCheck2,
-  CheckSquare,
-  Bell,
-  FolderOpen,
-  Search,
   ArrowRight,
-  LayoutGrid,
-  LogOut,
-  Moon,
-  Sun,
-  X,
-  FileUp,
-  Star,
+  ArrowLeft,
+  Bell,
+  Check,
+  Clock3,
+  FileSpreadsheet,
+  FileCheck2,
+  FileText,
+  FolderOpen,
+  Heart,
   Pin,
+  Search,
+  ShieldCheck,
+  Star,
+  Tag,
 } from "lucide-react";
 
-const ALPHABET = ["All", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""), "#"];
+const legalPages = {
+  terms: {
+    title: "Terms and Conditions",
+    introduction:
+      "These terms describe the basic expectations for using Notespace. By using the application, you agree to use it lawfully and responsibly.",
+    sections: [
+      {
+        heading: "Using the service",
+        text: "Do not misuse Notespace, interfere with its operation, or attempt to access another person's account or information.",
+      },
+      {
+        heading: "Your content and account",
+        text: "You are responsible for the notes and files you add, including ensuring you have the right to store them. Keep your sign-in details private and tell your account provider if you believe your account has been accessed without permission.",
+      },
+      {
+        heading: "Availability and changes",
+        text: "Features may change as Notespace is maintained and improved. The application is provided for general productivity use and is not a substitute for a dedicated system for records that require specific guarantees.",
+      },
+    ],
+  },
+  privacy: {
+    title: "Privacy Policy",
+    introduction:
+      "Notespace is designed for personal note-taking. This page summarizes data handling visible in the application; it is not a substitute for provider-specific privacy terms.",
+    sections: [
+      {
+        heading: "Notes and folders",
+        text: "The application saves notes and folders in this browser's local storage, using a key associated with the active account. People with access to this browser profile may be able to access locally stored information. Clearing browser storage may remove it.",
+      },
+      {
+        heading: "Sign-in",
+        text: "Account sign-in uses Firebase Authentication. The authentication provider processes sign-in information under its own policies and terms.",
+      },
+      {
+        heading: "Your choices",
+        text: "Avoid entering information you do not want stored in your browser. You can remove locally stored app data through your browser settings; clearing browser data may affect saved notes.",
+      },
+    ],
+  },
+  security: {
+    title: "Security",
+    introduction:
+      "Notespace uses Firebase Authentication for account sign-in and stores notes and folders in browser local storage. Security also depends on the device and browser profile used to access the application.",
+    sections: [
+      {
+        heading: "Protect your device",
+        text: "Use a device and browser profile that you control, keep your device access protected, and sign out when using a shared device.",
+      },
+      {
+        heading: "Choose what to store",
+        text: "Do not use Notespace as a vault for passwords, payment details, or other highly sensitive information. Anyone who can access your browser profile may be able to access locally stored app data.",
+      },
+      {
+        heading: "No unsupported guarantees",
+        text: "This page does not claim a particular encryption method, certification, compliance status, or security guarantee. Use an appropriately managed system when your information requires specific protections.",
+      },
+    ],
+  },
+};
 
-export default function LandingPage({
-  onEnterWorkspace,
-  dark,
-  onToggleTheme,
-  onOpenProfileModal,
-}) {
-  const {
-    notes,
-    filteredNotes,
-    createNote,
-    setUploadModalOpen,
-    activeLetterFilter,
-    setActiveLetterFilter,
-    stats,
-    importMultipleFiles,
-    search,
-    setSearch,
-    setActiveView,
-  } = useNotes();
+const features = [
+  {
+    id: "smart-notes",
+    icon: FileText,
+    title: "Smart Notes",
+    description: "Capture thoughts quickly and shape them into clear, useful notes.",
+    detail:
+      "Create notes with a rich-text editor, keep edits saved automatically, and attach useful files to a note.",
+    benefits: ["Rich-text editing", "Automatic saving", "Note attachments"],
+    illustration: "notes",
+  },
+  {
+    id: "folders-tags",
+    icon: FolderOpen,
+    title: "Folders and Tags",
+    description: "Organize work your way with flexible folders and searchable tags.",
+    detail:
+      "Keep related notes together in folders, then use tags to add another way to organize and find them.",
+    benefits: ["Create and manage folders", "Add tags to notes", "Browse by folder or tag"],
+    illustration: "folders",
+  },
+  {
+    id: "powerful-search",
+    icon: Search,
+    title: "Powerful Search",
+    description: "Find the details you need across note titles, content, and tags.",
+    detail:
+      "Search across note titles, text, categories, tags, and task text, then refine results with the available filters.",
+    benefits: ["Search note content and titles", "Match tags and task text", "Combine with color filters"],
+    illustration: "search",
+  },
+  {
+    id: "favorites-pinned",
+    icon: Star,
+    title: "Favorites and Pinned Notes",
+    description: "Keep the notes you rely on close and easy to revisit.",
+    detail:
+      "Mark notes as favorites or pin important items so you can quickly find the notes you use most.",
+    benefits: ["Dedicated Favorites view", "Dedicated Pinned view", "Quick note actions"],
+    illustration: "favorites",
+  },
+  {
+    id: "documents",
+    icon: FileCheck2,
+    title: "PDF and Document Management",
+    description: "Bring supported documents alongside your notes in one workspace.",
+    detail:
+      "Import supported documents as notes and use the existing PDF viewer for PDF attachments.",
+    benefits: ["Import PDF and supported document formats", "Keep files with notes", "Open PDFs in the viewer"],
+    illustration: "documents",
+  },
+  {
+    id: "productivity-reminders",
+    icon: Bell,
+    title: "Productivity and Reminders",
+    description: "Track tasks and set reminders for important follow-ups.",
+    detail:
+      "Add task checklists to notes and set reminders to help keep follow-ups visible in your workspace.",
+    benefits: ["Create and complete tasks", "Set reminders on notes", "Review upcoming reminders"],
+    illustration: "reminders",
+  },
+];
 
-  const { currentUser, logout } = useAuth();
-  const fileDropInputRef = useRef(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [uploading, setUploading] = useState(false);
+function FeatureIllustration({ feature }) {
+  const Icon = feature.icon;
+  return (
+    <div
+      className={`public-landing-feature-illustration illustration-${feature.illustration}`}
+      aria-hidden="true"
+    >
+      {feature.illustration === "notes" && (
+        <div className="illustration-note-sheet">
+          <span className="illustration-note-heading"><FileText size={16} /> Untitled note</span>
+          <span className="illustration-line line-wide" />
+          <span className="illustration-line" />
+          <span className="illustration-line line-short" />
+          <span className="illustration-note-status"><Check size={13} /> Saved</span>
+        </div>
+      )}
+      {feature.illustration === "folders" && (
+        <div className="illustration-folder-stack">
+          <span className="illustration-folder"><FolderOpen size={19} /> Projects <Tag size={13} /></span>
+          <span className="illustration-tag-pill">Planning</span>
+          <span className="illustration-tag-pill tag-soft">Ideas</span>
+        </div>
+      )}
+      {feature.illustration === "search" && (
+        <div className="illustration-search-results">
+          <span className="illustration-search-query"><Search size={15} /> project notes</span>
+          <span className="illustration-search-result"><FileText size={14} /> Project outline</span>
+          <span className="illustration-search-result"><FileText size={14} /> Notes for review</span>
+        </div>
+      )}
+      {feature.illustration === "favorites" && (
+        <div className="illustration-favorite-list">
+          <span><Star size={15} fill="currentColor" /> Favorite note</span>
+          <span><Pin size={15} fill="currentColor" /> Pinned note</span>
+          <span><Heart size={15} /> Quick to revisit</span>
+        </div>
+      )}
+      {feature.illustration === "documents" && (
+        <div className="illustration-document-list">
+          <span><FileText size={19} /> project-brief.pdf <small>PDF</small></span>
+          <span><FileSpreadsheet size={19} /> budget.csv <small>CSV</small></span>
+          <span><FileText size={19} /> meeting-notes.docx <small>DOCX</small></span>
+        </div>
+      )}
+      {feature.illustration === "reminders" && (
+        <div className="illustration-reminder-list">
+          <span><Check size={15} /> Review project notes</span>
+          <span><Clock3 size={15} /> Reminder set</span>
+          <span><Bell size={15} /> Upcoming</span>
+        </div>
+      )}
+      <span className="public-landing-illustration-mark"><Icon size={19} /></span>
+    </div>
+  );
+}
 
-  // Drag and Drop handlers on landing page
-  function handleDragOver(e) {
-    e.preventDefault();
-    setIsDragging(true);
+export default function LandingPage({ onOpenWorkspace, dark, onToggleTheme }) {
+  const [legalPage, setLegalPage] = useState(null);
+  const [selectedFeature, setSelectedFeature] = useState(null);
+  const featureDetailHeadingRef = useRef(null);
+  const featuresHeadingRef = useRef(null);
+
+  useEffect(() => {
+    if (selectedFeature) featureDetailHeadingRef.current?.focus();
+  }, [selectedFeature]);
+
+  function scrollToFeatures(event) {
+    event.preventDefault();
+    const featuresSection = document.getElementById("features");
+    if (!featuresSection) return;
+
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    featuresSection.scrollIntoView({
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+      block: "start",
+    });
   }
 
-  function handleDragLeave(e) {
-    e.preventDefault();
-    setIsDragging(false);
+  function openLegalPage(page) {
+    setLegalPage(page);
+    window.scrollTo({ top: 0, behavior: "auto" });
   }
 
-  async function handleDrop(e) {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = e.dataTransfer?.files;
-    if (files && files.length) {
-      setUploading(true);
-      await importMultipleFiles(files);
-      setUploading(false);
-    }
+  function openFeatureDetail(feature) {
+    setSelectedFeature(feature);
+    window.scrollTo({ top: 0, behavior: "auto" });
   }
 
-  async function handleFileInputChange(e) {
-    const files = e.target.files;
-    if (files && files.length) {
-      setUploading(true);
-      await importMultipleFiles(files);
-      setUploading(false);
-      e.target.value = "";
-    }
+  function closeFeatureDetail() {
+    setSelectedFeature(null);
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    window.requestAnimationFrame(() => {
+      featuresHeadingRef.current?.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        block: "center",
+      });
+    });
   }
-
-  // Active notes count
-  const nonDeletedNotes = notes.filter((n) => !n.deleted && !n.archived);
-  const previewNote = nonDeletedNotes[0];
-  const previewContent = (previewNote?.content || "")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  // Group notes count by letter for badge indicators
-  const letterCounts = nonDeletedNotes.reduce((acc, note) => {
-    const clean = (note.title || "Untitled").replace(/^[^a-zA-Z0-9]+/, "").trim();
-    const firstChar = clean.charAt(0).toUpperCase();
-    if (/[A-Z]/.test(firstChar)) {
-      acc[firstChar] = (acc[firstChar] || 0) + 1;
-    } else {
-      acc["#"] = (acc["#"] || 0) + 1;
-    }
-    return acc;
-  }, {});
 
   return (
-    <div className={`landing-page-shell ${dark ? "dark" : ""}`}>
-      <header className="landing-top-navbar">
-        <div className="landing-brand-group">
-          <div className="landing-logo-icon" aria-hidden="true">
-            <FileText size={21} />
-          </div>
-          <span className="landing-brand-title">
-            Note<span className="brand-accent">space</span>
+    <div className={`public-landing-page ${dark ? "dark" : ""}`}>
+      <header className="public-landing-header">
+        <a
+          className="public-landing-brand"
+          href="#home"
+          aria-label="Notespace home"
+          onClick={() => {
+            setLegalPage(null);
+            setSelectedFeature(null);
+          }}
+        >
+          <span className="public-landing-brand-icon" aria-hidden="true">
+            <FileText size={20} />
           </span>
-        </div>
+          <span>Notespace</span>
+        </a>
 
-        <div className="landing-search-wrap">
-          <Search size={16} className="search-icon" />
-          <input
-            type="text"
-            className="landing-search-input"
-            aria-label="Search your notes"
-            placeholder="Search your notes..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          {search && (
-            <button
-              type="button"
-              className="search-clear-btn"
-              onClick={() => setSearch("")}
-              aria-label="Clear search"
-            >
-              <X size={14} />
-            </button>
+        <nav className="public-landing-nav" aria-label="Main navigation">
+          {!legalPage && !selectedFeature && (
+            <a href="#features" onClick={scrollToFeatures}>Features</a>
           )}
-        </div>
-
-        <div className="landing-nav-actions">
           <button
             type="button"
-            className="landing-ghost-btn"
+            className="public-landing-theme-toggle"
             onClick={onToggleTheme}
+            aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
             title={dark ? "Switch to light mode" : "Switch to dark mode"}
-            aria-label="Toggle theme"
           >
-            {dark ? <Sun size={17} /> : <Moon size={17} />}
+            {dark ? "Light mode" : "Dark mode"}
           </button>
-
           <button
             type="button"
-            id="btn-open-workspace"
-            className="landing-primary-nav-btn"
-            onClick={onEnterWorkspace}
+            className="public-landing-header-cta"
+            onClick={onOpenWorkspace}
           >
-            <LayoutGrid size={16} />
-            <span>Open My Workspace</span>
+            Open My Workspace
+            <ArrowRight size={16} />
           </button>
-
-          <div
-            className="landing-user-chip"
-            onClick={onOpenProfileModal}
-            style={{ cursor: "pointer" }}
-            title="View Profile & Settings"
-            role="button"
-            tabIndex={0}
-          >
-            <div className="user-avatar-dot">{currentUser?.avatar || "U"}</div>
-            <span className="user-name-text">{currentUser?.name || "User"}</span>
-            <button
-              type="button"
-              id="btn-landing-logout"
-              className="landing-logout-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                logout();
-              }}
-              title="Sign Out to Login Page"
-              aria-label="Log out"
-            >
-              <LogOut size={15} />
-            </button>
-          </div>
-        </div>
+        </nav>
       </header>
 
-      <main className="landing-main-container">
-        <section className="landing-hero-banner">
-          <div className="hero-text-col landing-hero-copy">
-            <div className="hero-welcome-badge">
-              <span>YOUR SPACE FOR IDEAS</span>
-            </div>
-            <h1 className="hero-greeting">
-              A calmer space for every thought.
-            </h1>
-            <p className="hero-tagline">
-              Bring notes, documents, and the details of your day together in one thoughtfully organized workspace.
-            </p>
-
-            <div className="hero-action-buttons">
-              <button
-                type="button"
-                id="btn-hero-open-workspace"
-                className="primary-btn hero-launch-btn"
-                onClick={onEnterWorkspace}
-              >
-                <LayoutGrid size={18} />
-                <span>Open My Workspace</span>
-              </button>
-
-              <button
-                type="button"
-                id="btn-hero-upload"
-                className="secondary-btn hero-upload-btn"
-                onClick={() => setUploadModalOpen(true)}
-              >
-                <Upload size={18} />
-                <span>Import documents</span>
-              </button>
-            </div>
-
-            <button
-              type="button"
-              className="landing-create-note-link"
-              onClick={() => createNote()}
-            >
-              <Plus size={16} />
-              <span>Create a new note</span>
-              <ArrowRight size={15} />
-            </button>
-          </div>
-
-          <div className="landing-product-preview" aria-label="Preview of your Notespace notes">
-            <div className="landing-preview-topbar">
-              <div className="landing-preview-dots" aria-hidden="true"><i /><i /><i /></div>
-              <span>NOTESPACE</span>
-              <span className="landing-preview-count">{nonDeletedNotes.length} notes</span>
-            </div>
-            <div className="landing-preview-content">
-              <div className="landing-preview-sidebar" aria-hidden="true">
-                <span className="is-active"><FileText size={15} /> All notes</span>
-                <span><Star size={15} /> Favorites</span>
-                <span><Pin size={15} /> Pinned</span>
-                <span><FolderOpen size={15} /> Folders</span>
-              </div>
-              <div className="landing-preview-notes">
-                <div className="landing-preview-heading">
-                  <div>
-                    <span>YOUR LIBRARY</span>
-                    <strong>Recent notes</strong>
-                  </div>
-                  <button type="button" onClick={onEnterWorkspace}>View all <ArrowRight size={14} /></button>
-                </div>
-                {nonDeletedNotes.length ? (
-                  nonDeletedNotes.slice(0, 3).map((note) => (
-                    <article className="landing-preview-note" key={note.id}>
-                      <span className="landing-preview-note-icon"><FileText size={15} /></span>
-                      <span className="landing-preview-note-title">{note.title?.trim() || "Untitled note"}</span>
-                      <ArrowRight size={14} aria-hidden="true" />
-                    </article>
-                  ))
-                ) : (
-                  <div className="landing-preview-empty">
-                    <FileText size={19} />
-                    <span>Your notes will appear here</span>
-                  </div>
-                )}
-              </div>
-              <div className="landing-preview-editor" aria-hidden="true">
-                <div className="landing-preview-editor-toolbar">
-                  <span>B</span>
-                  <i />
-                  <span className="is-italic">I</span>
-                  <i />
-                  <span className="landing-preview-list-icon"><b /><b /><b /></span>
-                </div>
-                <h3>{previewNote?.title?.trim() || "A note of your own"}</h3>
-                {previewContent ? (
-                  <p>{previewContent.slice(0, 180)}</p>
-                ) : (
-                  <div className="landing-preview-editor-lines">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                )}
-                <div className="landing-preview-save-state"><span /> Your notes, in sync</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="landing-capabilities" aria-labelledby="landing-capabilities-title">
-          <div className="landing-section-heading">
-            <span>MADE FOR YOUR WORKFLOW</span>
-            <h2 id="landing-capabilities-title">Everything has its place.</h2>
-            <p>Simple tools to keep your ideas easy to find and ready when you need them.</p>
-          </div>
-          <div className="landing-capability-grid">
-            <article className="landing-capability-card">
-              <span className="landing-capability-icon"><FolderOpen size={19} /></span>
-              <h3>Folders that fit your flow</h3>
-              <p>Group notes into folders that make sense for your projects and life.</p>
-            </article>
-            <article className="landing-capability-card">
-              <span className="landing-capability-icon"><Search size={19} /></span>
-              <h3>Find it in a moment</h3>
-              <p>Search across your notes and keep the right detail close at hand.</p>
-            </article>
-            <article className="landing-capability-card">
-              <span className="landing-capability-icon"><Star size={19} /></span>
-              <h3>Keep key notes close</h3>
-              <p>Favorite or pin the notes you return to most often.</p>
-            </article>
-            <article className="landing-capability-card">
-              <span className="landing-capability-icon"><FileUp size={19} /></span>
-              <h3>Bring documents along</h3>
-              <p>Import supported documents and keep them alongside your notes.</p>
-            </article>
-          </div>
-        </section>
-
-        <section className="landing-overview-section" aria-label="Workspace overview">
-          <div className="landing-section-heading landing-overview-heading">
-            <span>YOUR NOTESPACE</span>
-            <h2>Your workspace at a glance.</h2>
-            <p>Jump straight into the notes, documents, and tasks you care about.</p>
-          </div>
-          <div className="hero-metrics-grid">
-            <div
-              className="metric-box box-violet interactive-metric"
-              onClick={() => {
-                setActiveView("All Notes");
-                onEnterWorkspace();
-              }}
-              title="Click to view all notes in Alphabetical Order"
-              role="button"
-              tabIndex={0}
-            >
-              <div className="metric-icon-wrap">
-                <FileText size={22} />
-              </div>
-              <div className="metric-info">
-                <span className="metric-number">{stats.total}</span>
-                <span className="metric-label">Alphabetical Notes</span>
-              </div>
-            </div>
-
-            <div
-              className="metric-box box-rose interactive-metric"
-              onClick={() => {
-                setActiveView("PDF & Docs");
-                onEnterWorkspace();
-              }}
-              title="Click to view all PDF notes and document uploads"
-              role="button"
-              tabIndex={0}
-            >
-              <div className="metric-icon-wrap">
-                <FileCheck2 size={22} />
-              </div>
-              <div className="metric-info">
-                <span className="metric-number">{stats.pdfNotes || 0}</span>
-                <span className="metric-label">PDF &amp; Documents</span>
-              </div>
-            </div>
-
-            <div
-              className="metric-box box-emerald interactive-metric"
-              onClick={() => {
-                setActiveView("Tasks");
-                onEnterWorkspace();
-              }}
-              title="Click to view task checklists"
-              role="button"
-              tabIndex={0}
-            >
-              <div className="metric-icon-wrap">
-                <CheckSquare size={22} />
-              </div>
-              <div className="metric-info">
-                <span className="metric-number">
-                  {stats.tasksCompleted} / {stats.tasksCount}
-                </span>
-                <span className="metric-label">Tasks Completed</span>
-              </div>
-            </div>
-
-            <div
-              className="metric-box box-amber interactive-metric"
-              onClick={() => {
-                setActiveView("Reminders");
-                onEnterWorkspace();
-              }}
-              title="Click to view scheduled reminders"
-              role="button"
-              tabIndex={0}
-            >
-              <div className="metric-icon-wrap">
-                <Bell size={22} />
-              </div>
-              <div className="metric-info">
-                <span className="metric-number">{stats.remindersCount}</span>
-                <span className="metric-label">Due Reminders</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Multi-Format Upload Dropzone Banner */}
-        <section
-          className={`landing-upload-dropzone-section ${isDragging ? "is-dragover" : ""}`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={() => fileDropInputRef.current?.click()}
+      {selectedFeature ? (
+        <main
+          className="public-landing-feature-detail"
+          aria-labelledby="feature-detail-title"
         >
-          <input
-            type="file"
-            ref={fileDropInputRef}
-            style={{ display: "none" }}
-            multiple
-            accept=".pdf,.doc,.docx,.txt,.md,.markdown,.csv,.json,image/*"
-            onChange={handleFileInputChange}
-          />
-          <div className="dropzone-inner-content">
-            <div className="dropzone-animated-icon">
-              <FileUp size={34} />
+          <button
+            type="button"
+            className="public-landing-secondary-cta public-landing-feature-back"
+            onClick={closeFeatureDetail}
+          >
+            <ArrowLeft size={16} />
+            Back to features
+          </button>
+          <article className="public-landing-feature-detail-card">
+            <FeatureIllustration feature={selectedFeature} />
+            <div className="public-landing-feature-detail-copy">
+              <span className="public-landing-eyebrow">Notespace feature</span>
+              <h1
+                id="feature-detail-title"
+                ref={featureDetailHeadingRef}
+                tabIndex="-1"
+              >
+                {selectedFeature.title}
+              </h1>
+              <p>{selectedFeature.detail}</p>
+              <h2>What you can do</h2>
+              <ul>
+                {selectedFeature.benefits.map((benefit) => (
+                  <li key={benefit}><Check size={16} />{benefit}</li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                className="public-landing-primary-cta"
+                onClick={closeFeatureDetail}
+              >
+                Return to features
+              </button>
             </div>
-            <div className="dropzone-text-group">
-              <h3>
-                {uploading
-                  ? "Importing & formatting your notes..."
-                  : "Upload PDF Notes & Other Document Formats"}
-              </h3>
-              <p>
-                Drop files here or click to browse. Import supported documents and keep your work together in one place.
-              </p>
+          </article>
+        </main>
+      ) : legalPage ? (
+        <main className="public-landing-legal" aria-labelledby="legal-title">
+          <button
+            type="button"
+            className="public-landing-secondary-cta public-landing-legal-back"
+            onClick={() => setLegalPage(null)}
+          >
+            <ArrowLeft size={16} />
+            Back to Notespace
+          </button>
+          <article className="public-landing-legal-content">
+            <span className="public-landing-eyebrow">Notespace information</span>
+            <h1 id="legal-title">{legalPages[legalPage].title}</h1>
+            <p className="public-landing-legal-intro">
+              {legalPages[legalPage].introduction}
+            </p>
+            {legalPages[legalPage].sections.map(({ heading, text }) => (
+              <section key={heading}>
+                <h2>{heading}</h2>
+                <p>{text}</p>
+              </section>
+            ))}
+          </article>
+        </main>
+      ) : (
+        <main id="home">
+          <section className="public-landing-hero" aria-labelledby="landing-title">
+          <div className="public-landing-hero-copy">
+            <span className="public-landing-eyebrow">
+              A calmer way to stay organized
+            </span>
+            <h1 id="landing-title">
+              Your ideas, notes, and documents. All in one place.
+            </h1>
+            <p>
+              Notespace brings your everyday thinking together, helping you
+              capture ideas, organize important details, and find what matters.
+            </p>
+            <div className="public-landing-hero-actions">
+              <button
+                type="button"
+                className="public-landing-primary-cta"
+                onClick={onOpenWorkspace}
+              >
+                Open My Workspace
+                <ArrowRight size={17} />
+              </button>
+              <a
+                className="public-landing-secondary-cta"
+                href="#features"
+                onClick={scrollToFeatures}
+              >
+                Explore Features
+              </a>
             </div>
-            <div className="supported-formats-pills">
-              <span className="format-tag tag-pdf">PDF</span>
-              <span className="format-tag tag-docx">DOCX</span>
-              <span className="format-tag tag-md">MARKDOWN</span>
-              <span className="format-tag tag-txt">TXT</span>
-              <span className="format-tag tag-csv">CSV</span>
-              <span className="format-tag tag-json">JSON</span>
+            <div className="public-landing-trust-note">
+              <ShieldCheck size={16} />
+              <span>A focused space for the work and ideas you care about.</span>
             </div>
+          </div>
+
+          <div className="public-landing-visual" aria-hidden="true">
+            <div className="public-landing-visual-orbit public-landing-visual-orbit-one" />
+            <div className="public-landing-visual-orbit public-landing-visual-orbit-two" />
+            <div className="public-landing-paper public-landing-paper-back">
+              <span />
+              <span />
+              <span />
+            </div>
+            <div className="public-landing-paper public-landing-paper-front">
+              <div className="public-landing-paper-icon">
+                <FileText size={21} />
+              </div>
+              <span className="public-landing-paper-line line-strong" />
+              <span className="public-landing-paper-line" />
+              <span className="public-landing-paper-line line-short" />
+              <div className="public-landing-paper-footer">
+                <span />
+                <span />
+              </div>
+            </div>
+            <span className="public-landing-float-mark mark-blue">
+              <FolderOpen size={18} />
+            </span>
+            <span className="public-landing-float-mark mark-lavender">
+              <Star size={17} />
+            </span>
+            <span className="public-landing-float-mark mark-soft">
+              <Bell size={17} />
+            </span>
           </div>
         </section>
 
-        {/* Alphabetical Order Browser Header & Letter Jump Bar */}
-        <section className="alphabetical-browser-section">
-          <div className="browser-header-row">
-            <div>
-              <div className="browser-eyebrow">
-                <span className="alphabet-icon">A &rarr; Z</span>
-                <span>ORGANIZED REPOSITORY</span>
-              </div>
-              <h2 className="browser-title">Your notes, in one place</h2>
-              <p className="browser-subtitle">
-                Browse alphabetically or jump straight to the note you need.
-              </p>
-            </div>
-
-            <div className="browser-meta-info">
-              <span className="notes-counter-badge">
-                Showing {filteredNotes.length} of {stats.total} notes
-              </span>
-            </div>
+        <section
+          className="public-landing-features"
+          id="features"
+          aria-labelledby="features-title"
+        >
+          <div className="public-landing-section-heading">
+            <span className="public-landing-eyebrow">Made for your workflow</span>
+            <h2 id="features-title" ref={featuresHeadingRef} tabIndex="-1">
+              Everything has its place.
+            </h2>
+            <p>
+              Thoughtful tools that help you stay focused and keep useful
+              information within reach.
+            </p>
           </div>
 
-          {/* Letter Jump Pills Bar (A, B, C... Z, #) */}
-          <div className="alphabet-letter-pills-bar" role="navigation" aria-label="Alphabetical jump filter">
-            {ALPHABET.map((letter) => {
-              const isActive = activeLetterFilter === letter;
-              const count = letter === "All" ? nonDeletedNotes.length : (letterCounts[letter] || 0);
-              const isDisabled = letter !== "All" && count === 0;
-
+          <div className="public-landing-feature-grid">
+            {features.map((feature) => {
+              const Icon = feature.icon;
               return (
-                <button
-                  key={letter}
-                  type="button"
-                  className={`letter-pill-btn ${isActive ? "is-active" : ""} ${isDisabled ? "is-disabled" : ""}`}
-                  onClick={() => setActiveLetterFilter(letter)}
-                  disabled={isDisabled}
-                  title={letter === "All" ? "View all notes" : `Jump to letter ${letter} (${count} notes)`}
-                >
-                  <span className="letter-char">{letter}</span>
-                  {count > 0 && <span className="letter-count-bubble">{count}</span>}
-                </button>
+              <button
+                type="button"
+                className="public-landing-feature-card"
+                key={feature.id}
+                onClick={() => openFeatureDetail(feature)}
+                aria-label={`Learn more about ${feature.title}`}
+              >
+                <span className="public-landing-feature-icon" aria-hidden="true">
+                  <Icon size={20} />
+                </span>
+                <h3>{feature.title}</h3>
+                <p>{feature.description}</p>
+              </button>
               );
             })}
           </div>
+          </section>
+        </main>
+      )}
 
-          {/* Active Filter Indicator */}
-          {activeLetterFilter !== "All" && (
-            <div className="active-letter-filter-alert">
-              <span>
-                Filtered by letter: <strong>"{activeLetterFilter}"</strong> ({filteredNotes.length} notes found)
-              </span>
-              <button
-                type="button"
-                className="clear-letter-btn"
-                onClick={() => setActiveLetterFilter("All")}
-              >
-                Clear Letter Filter
-              </button>
-            </div>
-          )}
-
-          {/* Notes Grid Display */}
-          {filteredNotes.length === 0 ? (
-            <div className="empty-alphabetical-state">
-              <div className="empty-icon-wrap">
-                <FileText size={38} />
-              </div>
-              <h3>No notes starting with "{activeLetterFilter}"</h3>
-              <p>You can create a new note with this letter or upload a document to get started.</p>
-              <div className="empty-actions">
-                <button
-                  type="button"
-                  className="primary-btn"
-                  onClick={() => createNote({ title: `${activeLetterFilter} - New Note` })}
-                >
-                  <Plus size={16} /> Create Note Starting with {activeLetterFilter}
-                </button>
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() => setActiveLetterFilter("All")}
-                >
-                  View All Notes
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="landing-notes-grid">
-              {filteredNotes.map((note) => (
-                <NoteCard key={note.id} note={note} />
-              ))}
-            </div>
-          )}
-        </section>
-      </main>
-
-      {/* Footer */}
-      <footer className="landing-footer">
-        <p>
-          Notespace · A little more clarity, every day.
-        </p>
+      <footer className="public-landing-footer">
+        <a
+          className="public-landing-footer-brand"
+          href="#home"
+          onClick={() => {
+            setLegalPage(null);
+            setSelectedFeature(null);
+          }}
+        >
+          Notespace
+        </a>
+        <span>Make room for what matters.</span>
+        <nav aria-label="Legal">
+          <button type="button" onClick={() => openLegalPage("terms")}>
+            Terms and Conditions
+          </button>
+          <button type="button" onClick={() => openLegalPage("privacy")}>
+            Privacy Policy
+          </button>
+          <button type="button" onClick={() => openLegalPage("security")}>
+            Security
+          </button>
+        </nav>
       </footer>
     </div>
   );

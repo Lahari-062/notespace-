@@ -16,6 +16,7 @@ import {
   Pin,
   CheckSquare,
   LoaderCircle,
+  ArrowLeft,
 } from "lucide-react";
 import {
   signInWithPopup,
@@ -71,7 +72,7 @@ async function callOtpService(payload) {
   return result;
 }
 
-export default function LoginPage({ dark, onToggleTheme }) {
+export default function LoginPage({ dark, onToggleTheme, onOpenLanding }) {
   const { loginWithFirebaseUser } = useAuth();
 
   const [tab, setTab] = useState("login");
@@ -453,6 +454,14 @@ export default function LoginPage({ dark, onToggleTheme }) {
 
         <section className="auth-form-side" aria-label="Account access">
           <header className="auth-form-topbar">
+            <button
+              type="button"
+              className="auth-home-link"
+              onClick={onOpenLanding}
+            >
+              <ArrowLeft size={15} />
+              Home
+            </button>
             <div className="login-brand auth-mobile-brand" aria-label="Notespace">
               <div className="login-brand-icon">
                 <FileText size={19} strokeWidth={2} />

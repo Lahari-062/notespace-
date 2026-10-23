@@ -73,6 +73,13 @@ export default function NoteCard({ note }) {
   const isPdfNote = note.format === "pdf" || !!pdfAttachment;
   const isDocNote = note.format === "docx" || note.format === "doc" || !!docAttachment;
 
+  function handleSelectNote() {
+    setSelectedId(note.id);
+    if (isPdfNote && pdfAttachment?.dataUrl) {
+      openPdfViewer(pdfAttachment.dataUrl, note.title, pdfAttachment.name);
+    }
+  }
+
   return (
     <article
       className={`note-card card-color-${note.color || "violet"} ${
@@ -97,6 +104,7 @@ export default function NoteCard({ note }) {
               className="card-format-badge badge-pdf"
               onClick={(e) => {
                 e.stopPropagation();
+                setSelectedId(note.id);
                 if (pdfAttachment?.dataUrl) {
                   openPdfViewer(pdfAttachment.dataUrl, note.title, pdfAttachment.name);
                 } else {
@@ -168,11 +176,11 @@ export default function NoteCard({ note }) {
   className="note-card-body"
   role="button"
   tabIndex={0}
-  onClick={() => setSelectedId(note.id)}
+  onClick={handleSelectNote}
   onKeyDown={(e) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      setSelectedId(note.id);
+      handleSelectNote();
     }
   }}
 >

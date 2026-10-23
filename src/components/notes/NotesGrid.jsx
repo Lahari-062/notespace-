@@ -16,6 +16,7 @@ export default function NotesGrid() {
   const {
     filteredNotes,
     activeView,
+    setActiveView,
     search,
     setSearch,
     selectedColor,
@@ -32,6 +33,11 @@ export default function NotesGrid() {
   const searchInputRef = useRef(null);
 
   const ALPHABET = ["All", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""), "#"];
+
+  function handleCreateNote() {
+    if (activeView === "Welcome") setActiveView("All Notes");
+    createNote();
+  }
 
   useEffect(() => {
     function handleKeyDown(event) {
@@ -71,7 +77,7 @@ export default function NotesGrid() {
         <button
           type="button"
           className="notes-panel-new-note"
-          onClick={() => createNote()}
+          onClick={handleCreateNote}
           aria-label="Create a new note"
         >
           <Plus size={16} />
@@ -157,6 +163,29 @@ export default function NotesGrid() {
     </header>
   );
 
+  if (activeView === "Welcome") {
+    return (
+      <>
+        {panelHeader}
+        <div className="workspace-welcome-state">
+          <div className="workspace-welcome-icon">
+            <Sparkles size={24} />
+          </div>
+          <span className="notes-panel-eyebrow">A FRESH START</span>
+          <h3>Your workspace is ready.</h3>
+          <p>Choose a section from the sidebar or open all your notes to get started.</p>
+          <button
+            type="button"
+            className="primary-btn"
+            onClick={() => setActiveView("All Notes")}
+          >
+            Browse All Notes
+          </button>
+        </div>
+      </>
+    );
+  }
+
   // Empty state messages
   if (filteredNotes.length === 0) {
     return (
@@ -194,15 +223,6 @@ export default function NotesGrid() {
                 : "Capture your ideas, brainstorm projects, and organize your tasks."}
             </p>
 
-            {!isTrash && !isArchive && (
-              <button
-                type="button"
-                className="primary-btn empty-create-btn"
-                onClick={() => createNote()}
-              >
-                <Plus size={18} /> Create New Note
-              </button>
-            )}
           </div>
         </div>
       </>
@@ -220,7 +240,7 @@ export default function NotesGrid() {
             <span className="alphabet-bar-title">
               <strong>Alphabetical Order ({sortBy === "az" ? "A &rarr; Z" : "Z &rarr; A"})</strong>
             </span>
-            {activeLetterFilter !== "All" && (
+            {activeLetterFilter.toLowerCase() !== "all" && (
               <button
                 type="button"
                 className="clear-grid-letter-btn"
@@ -235,7 +255,11 @@ export default function NotesGrid() {
               <button
                 key={letter}
                 type="button"
-                className={`grid-letter-pill ${activeLetterFilter === letter ? "is-active" : ""}`}
+                className={`grid-letter-pill ${
+                  activeLetterFilter.toLowerCase() === letter.toLowerCase()
+                    ? "is-active"
+                    : ""
+                }`}
                 onClick={() => setActiveLetterFilter(letter)}
               >
                 {letter}
@@ -293,19 +317,6 @@ export default function NotesGrid() {
             <NoteCard key={note.id} note={note} />
           ))}
 
-          {!isTrash && !isArchive && (
-            <button
-              type="button"
-              className="add-note-ghost-card"
-              onClick={() => createNote()}
-            >
-              <div className="ghost-icon-wrap">
-                <Plus size={24} />
-              </div>
-              <strong>Create a new note</strong>
-              <span>Start with a fresh idea</span>
-            </button>
-          )}
         </div>
       </section>
       </div>

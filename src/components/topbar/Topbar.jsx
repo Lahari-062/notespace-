@@ -8,7 +8,6 @@ import {
   Cloud,
   CloudCheck,
   RefreshCw,
-  Upload,
   Compass,
 } from "lucide-react";
 
@@ -26,9 +25,9 @@ export default function Topbar({
     activeView,
     selectedTag,
     setSelectedTag,
+    setSelectedId,
     syncState,
     upcomingReminders,
-    setUploadModalOpen,
   } = useNotes();
 
   const { currentUser } = useAuth();
@@ -57,7 +56,10 @@ export default function Topbar({
               #{selectedTag}
               <button
                 type="button"
-                onClick={() => setSelectedTag(null)}
+                onClick={() => {
+                  setSelectedTag(null);
+                  setSelectedId(null);
+                }}
                 aria-label="Remove tag filter"
               >
                 ×
@@ -81,17 +83,6 @@ export default function Topbar({
             <span>Landing Hub</span>
           </button>
         )}
-
-        {/* Upload Notes / Document Module Button */}
-        <button
-          type="button"
-          className="topbar-upload-quick-btn"
-          onClick={() => setUploadModalOpen(true)}
-          title="Upload PDF, Word, Markdown, or text files"
-        >
-          <Upload size={15} />
-          <span>Upload Files</span>
-        </button>
 
         {/* Reminders Button */}
         <button

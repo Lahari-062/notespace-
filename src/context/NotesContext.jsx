@@ -162,6 +162,9 @@ export function NotesProvider({ children }) {
   const [notes, setNotes] = useState(() => loadInitialNotes(userId));
   const [folders, setFolders] = useState(() => loadInitialFolders(userId));
   const [selectedId, setSelectedId] = useState(null);
+  const [activeView, setActiveView] = useState(() =>
+    currentUser ? "Welcome" : "All Notes"
+  );
 
   // Sync state if userId changes
   const prevUserIdRef = useRef(userId);
@@ -171,11 +174,11 @@ export function NotesProvider({ children }) {
       setNotes(loadInitialNotes(userId));
       setFolders(loadInitialFolders(userId));
       setSelectedId(null);
+      setActiveView("Welcome");
     }
   }, [userId]);
 
   // UI state: selection, view, filters
-  const [activeView, setActiveView] = useState("All Notes");
   const [selectedFolderId, setSelectedFolderId] = useState(null);
   const [selectedTag, setSelectedTag] = useState(null);
   const [selectedColor, setSelectedColor] = useState("all");
@@ -354,6 +357,25 @@ export function NotesProvider({ children }) {
   // ---------------- NOTE CRUD ACTIONS ----------------
 
   function createNote(overrides = {}) {
+    if (
+      [
+        "Welcome",
+        "Favorites",
+        "Pinned",
+        "Archive",
+        "Trash",
+        "PDF & Docs",
+        "PDF Notes",
+        "Tasks",
+        "Reminders",
+        "Doodles",
+      ].includes(activeView)
+    ) {
+      setActiveView("All Notes");
+    }
+
+    closePdfViewer();
+
     const now = Date.now();
     const initialFolder = folders[0] || defaultFolders[0];
 
@@ -1031,7 +1053,12 @@ export function NotesProvider({ children }) {
     return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
   })();
 
+  const hasLetterFilter =
+    activeLetterFilter && activeLetterFilter.toLowerCase() !== "all";
+
   const filteredNotes = notes.filter((note) => {
+    if (activeView === "Welcome") return false;
+
     const searchableText = [
       note.title || "",
       note.content || "",
@@ -1095,12 +1122,12 @@ export function NotesProvider({ children }) {
     }
 
     // Optional letter filter in alphabetical browsing
-    if (activeLetterFilter && activeLetterFilter !== "all") {
+    if (hasLetterFilter) {
       const firstChar = (note.title || "").replace(/^[^a-zA-Z0-9]+/, "").trim().charAt(0).toUpperCase();
       if (activeLetterFilter === "#") {
         if (/[A-Z]/.test(firstChar)) return false;
       } else {
-        if (firstChar !== activeLetterFilter) return false;
+        if (firstChar !== activeLetterFilter.toUpperCase()) return false;
       }
     }
 

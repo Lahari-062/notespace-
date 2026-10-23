@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { FileText } from "lucide-react";
 
 import { AuthProvider } from "./context/AuthContext";
 import { NotesProvider } from "./context/NotesContext";
@@ -18,7 +19,6 @@ import AuthModal from "./components/auth/AuthModal";
 import BackupModal from "./components/modals/BackupModal";
 import RemindersDrawer from "./components/modals/RemindersDrawer";
 import UploadNotesModal from "./components/modals/UploadNotesModal";
-import PdfViewerModal from "./components/modals/PdfViewerModal";
 
 import ToastContainer from "./components/common/ToastContainer";
 import DoodleCanvas from "./components/DoodleCanvas";
@@ -31,6 +31,7 @@ function NotesAppContent() {
 
   const {
     activeView,
+    setActiveView,
     createNote,
     selectedNote,
     uploadModalOpen,
@@ -100,6 +101,7 @@ function NotesAppContent() {
         event.key.toLowerCase() === "n"
       ) {
         event.preventDefault();
+        if (activeView === "Welcome") setActiveView("All Notes");
         createNote();
       }
     }
@@ -109,10 +111,9 @@ function NotesAppContent() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [createNote]);
+  }, [activeView, createNote, setActiveView]);
 
-  // Login screen
-  if (!currentUser) {
+  if (!currentUser && currentScreen === "login") {
     return (
       <>
         <LoginPage
@@ -120,6 +121,7 @@ function NotesAppContent() {
           onToggleTheme={() =>
             setDark((previous) => !previous)
           }
+          onOpenLanding={() => setCurrentScreen("landing")}
         />
 
         <ToastContainer />
@@ -127,14 +129,28 @@ function NotesAppContent() {
     );
   }
 
+  if (!currentUser) {
+    return (
+      <>
+        <LandingPage
+          onOpenWorkspace={() => setCurrentScreen("login")}
+          dark={dark}
+          onToggleTheme={() =>
+            setDark((previous) => !previous)
+          }
+        />
+        <ToastContainer />
+      </>
+    );
+  }
+
   return (
     <div
-      className={`app-shell ${currentScreen === "workspace" ? "notespace-app-shell" : ""} ${dark ? "dark" : ""}`}
+      className={`app-shell ${currentScreen === "workspace" ? "notespace-app-shell" : ""} ${activeView === "Welcome" ? "is-welcome" : ""} ${dark ? "dark" : ""}`}
     >
       {currentScreen === "landing" ? (
         <LandingPage
-          onEnterWorkspace={() => setCurrentScreen("workspace")}
-          onOpenProfileModal={() => setProfileModalOpen(true)}
+          onOpenWorkspace={() => setCurrentScreen("workspace")}
           dark={dark}
           onToggleTheme={() =>
             setDark((previous) => !previous)
@@ -205,6 +221,22 @@ function NotesAppContent() {
 
                   <DoodleCanvas saveLabel="Save Doodle" />
                 </div>
+              ) : activeView === "Welcome" ? (
+                <div className="workspace-home-screen">
+                  <div className="workspace-welcome-icon">
+                    <FileText size={24} />
+                  </div>
+                  <span className="notes-panel-eyebrow">YOUR WORKSPACE</span>
+                  <h2>Welcome to Notespace</h2>
+                  <p>Choose a section from the sidebar to browse your notes and documents.</p>
+                  <button
+                    type="button"
+                    className="primary-btn"
+                    onClick={() => setActiveView("All Notes")}
+                  >
+                    Browse All Notes
+                  </button>
+                </div>
               ) : (
                 /* Existing Notes Workspace */
                 <>
@@ -226,7 +258,7 @@ function NotesAppContent() {
                       className="notespace-editor-panel notespace-workspace-editor"
                       aria-label="Selected note editor"
                     >
-                      <NoteEditorModal inline />
+                      <NoteEditorModal inline showCreateAction={false} />
                     </section>
                   </div>
                   </>
@@ -237,13 +269,10 @@ function NotesAppContent() {
       )}
                  
       {/* Global Modals: Accessible from both Landing Page and Workspace */}
-      {currentScreen === "landing" && <NoteEditorModal />}
       <UploadNotesModal
         isOpen={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
       />
-
-      <PdfViewerModal />
 
       <FolderModal
         isOpen={folderModalState.isOpen}

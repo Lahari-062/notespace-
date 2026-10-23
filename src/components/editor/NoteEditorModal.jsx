@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useNotes } from "../../context/useNotes";
 import RichEditor from "./RichEditor";
 import ImageLightbox from "../modals/ImageLightbox";
+import PdfViewerModal from "../modals/PdfViewerModal";
 import { formatFileSize, getReminderCountdown, isReminderDue } from "../../utils/dates";
 import {
   X,
@@ -39,11 +40,15 @@ const NOTE_COLORS = [
   { id: "cyan", name: "Cyan", bg: "#06b6d4" },
 ];
 
-export default function NoteEditorModal({ inline = false }) {
+export default function NoteEditorModal({
+  inline = false,
+  showCreateAction = true,
+}) {
   const {
    selectedNote,
     setSelectedId,
     createNote,
+    pdfViewerModal,
     updateNote,
     deleteNote,
     restoreNote,
@@ -82,6 +87,10 @@ export default function NoteEditorModal({ inline = false }) {
 
   const fileInputRef = useRef(null);
 
+  if (inline && pdfViewerModal.isOpen) {
+    return <PdfViewerModal inline />;
+  }
+
   if (!selectedNote) {
     if (!inline) return null;
 
@@ -96,14 +105,16 @@ export default function NoteEditorModal({ inline = false }) {
           <p>
             Choose a note from your library, or start with a fresh page.
           </p>
-          <button
-            type="button"
-            className="primary-btn editor-empty-create-btn"
-            onClick={() => createNote()}
-          >
-            <Plus size={16} />
-            Create a note
-          </button>
+          {showCreateAction && (
+            <button
+              type="button"
+              className="primary-btn editor-empty-create-btn"
+              onClick={() => createNote()}
+            >
+              <Plus size={16} />
+              Create a note
+            </button>
+          )}
         </div>
       </section>
     );

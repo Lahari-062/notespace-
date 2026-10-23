@@ -9,7 +9,7 @@ import {
   ZoomOut,
 } from "lucide-react";
 
-export default function PdfViewerModal() {
+export default function PdfViewerModal({ inline = false }) {
   const { pdfViewerModal, closePdfViewer } = useNotes();
   const [zoomLevel, setZoomLevel] = useState(100);
 
@@ -34,12 +34,25 @@ export default function PdfViewerModal() {
 
   return (
     <div
-      className="modal-backdrop pdf-viewer-backdrop"
+      className={
+        inline
+          ? "pdf-viewer-inline"
+          : "modal-backdrop pdf-viewer-backdrop"
+      }
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) closePdfViewer();
+        if (!inline && e.target === e.currentTarget) closePdfViewer();
       }}
     >
-      <div className="modal-dialog pdf-viewer-modal" role="dialog" aria-modal="true">
+      <div
+        className={
+          inline
+            ? "pdf-viewer-inline-panel"
+            : "modal-dialog pdf-viewer-modal"
+        }
+        role={inline ? "region" : "dialog"}
+        aria-label={inline ? "PDF document viewer" : undefined}
+        aria-modal={inline ? undefined : "true"}
+      >
         {/* Top Header */}
         <header className="pdf-viewer-header">
           <div className="pdf-viewer-title-group">

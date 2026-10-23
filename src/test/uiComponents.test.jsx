@@ -8,6 +8,8 @@ import LoginPage from "../components/auth/LoginPage";
 import ProfileModal from "../components/auth/ProfileModal";
 import NotesGrid from "../components/notes/NotesGrid";
 import NoteEditorModal from "../components/editor/NoteEditorModal";
+import PdfViewerModal from "../components/modals/PdfViewerModal";
+import { useNotes } from "../context/useNotes";
 
 vi.mock("firebase/auth", async (importOriginal) => {
   const actual = await importOriginal();
@@ -206,6 +208,45 @@ describe("UI Authentication Components", () => {
       expect(document.querySelector(".workspace-editor-host")).toBeInTheDocument();
       expect(document.querySelector(".workspace-editor-host.modal-backdrop")).toBeNull();
       expect(document.querySelector(".modal-backdrop")).toBeNull();
+    });
+
+    it("renders the selected PDF inside the workspace panel instead of a modal", () => {
+      function PdfViewerHarness() {
+        const { openPdfViewer } = useNotes();
+        return (
+          <>
+            <button
+              type="button"
+              onClick={() =>
+                openPdfViewer(
+                  "data:application/pdf;base64,JVBERi0xLjQ=",
+                  "Workspace PDF",
+                  "workspace.pdf"
+                )
+              }
+            >
+              Open PDF
+            </button>
+            <PdfViewerModal inline />
+          </>
+        );
+      }
+
+      render(
+        <AuthProvider>
+          <NotesProvider>
+            <PdfViewerHarness />
+          </NotesProvider>
+        </AuthProvider>
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Open PDF" }));
+
+      expect(
+        screen.getByRole("region", { name: "PDF document viewer" })
+      ).toBeInTheDocument();
+      expect(document.querySelector(".modal-backdrop")).toBeNull();
+      expect(screen.getByText("workspace.pdf")).toBeInTheDocument();
     });
   });
 });
