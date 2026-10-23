@@ -85,11 +85,37 @@ exports.otpBridge = onRequest((req, res) => {
         redirect: "follow",
       });
 
+      if (!upstream.ok) {
+        logger.error("OTP bridge upstream returned a non-success status", {
+          status: upstream.status,
+        });
+
+        return res.status(upstream.status === 503 ? 503 : 502).json({
+          success: false,
+          message: "The OTP service could not complete the request.",
+        });
+      }
+
       const result = await upstream.json();
 
+      if (
+        !result ||
+        typeof result !== "object" ||
+        Array.isArray(result) ||
+        typeof result.success !== "boolean" ||
+        typeof result.message !== "string"
+      ) {
+        logger.error("OTP bridge upstream returned an invalid response");
+
+        return res.status(502).json({
+          success: false,
+          message: "The OTP service could not complete the request.",
+        });
+      }
+
       return res.status(200).json(result);
-    } catch (error) {
-      logger.error("OTP bridge request failed", error);
+    } catch {
+      logger.error("OTP bridge request failed");
 
       return res.status(502).json({
         success: false,
